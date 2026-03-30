@@ -1,0 +1,124 @@
+# TunnelVision
+
+**TunnelVision** is a graphical WireGuard VPN client for Linux, built with Go and [Fyne](https://fyne.io/). It aims to provide the same ease-of-use as the official WireGuard Windows client — something Linux desktop users have been missing.
+
+This project was created with the assistance of **GitHub Copilot** (Claude Opus 4.6).
+
+## Features
+
+- **Import configs** — Import `.conf` files individually or an entire folder of configs at once
+- **Create & edit configs** — Create new tunnel configurations from scratch, or edit existing ones with a raw text editor
+- **Folder grouping** — Organize tunnels into folders (great for VPN providers with dozens of servers)
+- **Connect / Disconnect** — One-click connect to any tunnel via NetworkManager (no password prompts needed)
+- **Connect to random** — Select a folder and connect to a random tunnel within it (handy when you just want *any* server from a provider)
+- **System tray** — Sits in your system tray with a status icon (green = connected, grey = disconnected). Right-click for quick connect/disconnect without opening the main window
+- **Graceful shutdown** — Active tunnels are automatically disconnected when the app quits (or receives SIGINT/SIGTERM)
+- **Close to tray** — Closing the window keeps the app running in the tray
+
+## Screenshots
+
+*(Coming soon)*
+
+## Requirements
+
+- **Linux** (tested on Fedora 43 KDE, should work on any distro with NetworkManager and WireGuard support)
+- **NetworkManager** — must be running (ships by default on Fedora, Ubuntu, and most desktop distros)
+- **WireGuard tools** — `wireguard-tools` package must be installed
+
+## Building
+
+### Fedora
+
+```bash
+# Install build dependencies
+sudo dnf install -y gcc pkg-config \
+    libX11-devel libXcursor-devel libXrandr-devel libXinerama-devel \
+    mesa-libGL-devel libXi-devel libXxf86vm-devel
+
+# Install WireGuard tools (if not already installed)
+sudo dnf install -y wireguard-tools
+
+# Build
+go build -o tunnelvision .
+```
+
+### Ubuntu / Debian
+
+```bash
+# Install build dependencies
+sudo apt install -y gcc pkg-config \
+    libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev \
+    libgl1-mesa-dev libxi-dev libxxf86vm-dev
+
+# Install WireGuard tools
+sudo apt install -y wireguard-tools
+
+# Build
+go build -o tunnelvision .
+```
+
+### Run
+
+```bash
+./tunnelvision
+```
+
+The app stores its configuration in `~/.config/tunnelvision/`.
+
+## Usage
+
+1. **Import tunnels** — Click "Import File" for a single `.conf` file, or "Import Folder" to bulk-import all `.conf` files from a directory
+2. **Create folders** — Click "New Folder" to create a folder, then select a tunnel and use "Move to Folder..." to organize
+3. **Connect** — Select a tunnel and click "Connect" (or click a tunnel name in the system tray)
+4. **Random connect** — Select a folder and click "Connect" to connect to a random tunnel from that folder
+5. **Disconnect** — Click "Disconnect", or right-click the tray icon and select "Disconnect"
+6. **Edit** — Click any tunnel to view/edit its raw `.conf` content. Click "Save" to persist changes.
+
+## Architecture
+
+```
+tunnelvision/
+├── main.go                     # Entry point, graceful shutdown, lifecycle
+├── internal/
+│   ├── config/
+│   │   ├── parser.go           # WireGuard .conf file parser
+│   │   └── store.go            # Config storage, folder metadata (metadata.json)
+│   ├── tunnel/
+│   │   ├── manager.go          # Connect/disconnect via nmcli + NetworkManager
+│   │   └── status.go           # Active WireGuard interface detection
+│   └── ui/
+│       ├── mainwindow.go       # Main window layout, toolbar, dialogs
+│       ├── tunnellist.go       # Tree widget for folders + tunnels
+│       ├── configeditor.go     # Raw config text editor panel
+│       ├── tray.go             # System tray icon and menu
+│       └── resources.go        # Embedded SVG icon resources
+└── assets/                     # Source SVG icons
+```
+
+**Key design decisions:**
+- Uses `nmcli connection import/up/down/delete` for tunnel operations — NetworkManager handles privilege escalation via D-Bus
+- Configs stored flat in `~/.config/tunnelvision/tunnels/`, folder grouping is virtual (tracked in `metadata.json`)
+- One active tunnel at a time — connecting a new tunnel disconnects the current one first
+
+## Tech Stack
+
+- **Go** — Application language
+- **[Fyne v2](https://fyne.io/)** — Cross-platform GUI toolkit (pure Go, minimal CGo)
+- **[NetworkManager](https://networkmanager.dev/)** — WireGuard tunnel lifecycle via `nmcli` (no root/pkexec needed)
+
+## Cross-Distribution Support
+
+TunnelVision is designed to be distro-agnostic. It depends only on:
+- `nmcli` / NetworkManager — available on all major desktop distros (Fedora, Ubuntu, Arch, openSUSE, etc.)
+- `wireguard-tools` — available on all major distros
+- OpenGL / X11 / Wayland libraries — standard on any desktop Linux
+
+Only the build dependency package names differ between distros (see Building section above).
+
+## License
+
+MIT
+
+## Attribution
+
+This project was created with the assistance of **GitHub Copilot** (Claude Opus 4.6).
