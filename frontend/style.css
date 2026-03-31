@@ -1,0 +1,284 @@
+/* TunnelVision custom styles — extends Pico CSS */
+
+:root {
+    --tv-sidebar-width: 280px;
+    --tv-color-connected: #4caf50;
+    --tv-color-disconnected: #9e9e9e;
+    --tv-color-active-bg: rgba(76, 175, 80, 0.12);
+}
+
+/* Remove default Pico body padding */
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Toolbar */
+#toolbar {
+    padding: 0.4rem 0.8rem;
+    margin: 0;
+    border-bottom: 1px solid var(--pico-muted-border-color);
+    flex-shrink: 0;
+}
+
+#toolbar ul {
+    margin: 0;
+    gap: 0.3rem;
+}
+
+#toolbar button {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.82rem;
+    margin: 0;
+}
+
+/* Main layout */
+#main-layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar */
+#sidebar {
+    width: var(--tv-sidebar-width);
+    min-width: var(--tv-sidebar-width);
+    border-right: 1px solid var(--pico-muted-border-color);
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+/* Tunnel tree */
+#tunnel-tree {
+    font-size: 0.9rem;
+}
+
+.tree-folder {
+    margin-bottom: 0.25rem;
+}
+
+.tree-folder summary {
+    cursor: pointer;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    user-select: none;
+    font-weight: 600;
+    font-size: 0.88rem;
+    list-style: none;
+    color: var(--pico-color);
+}
+
+.tree-folder summary::before {
+    content: "▸ ";
+    display: inline;
+}
+
+.tree-folder[open] > summary::before {
+    content: "▾ ";
+}
+
+.tree-folder summary:hover {
+    background: var(--pico-secondary-hover-background);
+}
+
+.tree-folder summary.selected {
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+}
+
+.tree-folder .folder-tunnels {
+    padding-left: 1rem;
+}
+
+.tree-item {
+    cursor: pointer;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tree-item:hover {
+    background: var(--pico-secondary-hover-background);
+}
+
+.tree-item.selected {
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+}
+
+.tree-item.active-tunnel {
+    color: var(--tv-color-connected);
+    font-weight: 600;
+}
+
+.tree-item.active-tunnel::before {
+    content: "● ";
+}
+
+.tree-folder.active-folder > summary {
+    color: var(--tv-color-connected);
+    font-weight: 700;
+}
+
+.tree-folder.active-folder > summary::before {
+    content: "▸ ● ";
+}
+
+.tree-folder.active-folder[open] > summary::before {
+    content: "▾ ● ";
+}
+
+/* Disconnect button — red */
+#btn-disconnect {
+    --pico-color: #ef5350;
+    --pico-border-color: #ef5350;
+}
+
+#btn-disconnect:hover:not(:disabled) {
+    background: #ef5350;
+    border-color: #ef5350;
+    color: #fff;
+}
+
+/* Section header for ungrouped */
+.tree-section-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--pico-muted-color);
+    padding: 0.5rem 0.5rem 0.2rem;
+    letter-spacing: 0.05em;
+}
+
+/* Editor panel */
+#editor-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Tunnel info chips */
+#tunnel-info {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.info-chip {
+    font-size: 0.82rem;
+    background: var(--pico-card-background-color);
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 4px;
+    padding: 0.2rem 0.6rem;
+}
+
+.info-chip:empty {
+    display: none;
+}
+
+/* Config editor */
+#config-editor {
+    font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
+    font-size: 0.85rem;
+    flex: 1;
+    min-height: 300px;
+    resize: none;
+    tab-size: 4;
+}
+
+/* Editor action bar */
+#editor-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.75rem;
+}
+
+#editor-actions button {
+    margin: 0;
+}
+
+#folder-select {
+    margin: 0;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+    width: auto;
+    min-width: 160px;
+}
+
+/* Folder view */
+#folder-view {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+#folder-view h3 {
+    margin-bottom: 0;
+}
+
+/* Empty view */
+#empty-view {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    color: var(--pico-muted-color);
+}
+
+/* Utility */
+.hidden {
+    display: none !important;
+}
+
+/* Dialog tweaks */
+dialog article {
+    max-width: 480px;
+}
+
+dialog pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.85rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+dialog footer {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+dialog footer button {
+    margin: 0;
+    width: auto;
+}
+
+/* Scrollbar styling */
+#sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+    background: var(--pico-muted-border-color);
+    border-radius: 3px;
+}
+
+details[open]>summary:not([role]):not(:focus) {
+  color:var(--pico-primary-inverse);
+}
+
+details summary:focus:not([role]) {
+    color:var(--pico-primary-inverse);
+}

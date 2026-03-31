@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TunnelVision</title>
+    <link rel="stylesheet" href="/pico.min.css">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <!-- Toolbar -->
+    <nav id="toolbar">
+        <ul>
+            <li><button id="btn-import-file" class="outline">Import File</button></li>
+            <li><button id="btn-import-folder" class="outline">Import Folder</button></li>
+            <li><button id="btn-new-tunnel" class="outline">New Tunnel</button></li>
+            <li><button id="btn-new-folder" class="outline">New Folder</button></li>
+        </ul>
+        <ul>
+            <li><button id="btn-delete" class="outline contrast" disabled>Delete</button></li>
+            <li><button id="btn-connect" disabled>Connect</button></li>
+            <li><button id="btn-disconnect" class="outline" disabled>Disconnect</button></li>
+        </ul>
+    </nav>
+
+    <!-- Main layout -->
+    <div id="main-layout">
+        <!-- Left: Tunnel tree -->
+        <aside id="sidebar">
+            <div id="tunnel-tree"></div>
+        </aside>
+
+        <!-- Right: Editor panel -->
+        <main id="editor-panel">
+            <!-- Tunnel view (shown when a tunnel is selected) -->
+            <div id="tunnel-view" class="hidden">
+                <div id="tunnel-info">
+                    <span id="info-address" class="info-chip" title="Address"></span>
+                    <span id="info-endpoint" class="info-chip" title="Endpoint"></span>
+                    <span id="info-dns" class="info-chip" title="DNS"></span>
+                </div>
+                <textarea id="config-editor" spellcheck="false"></textarea>
+                <div id="editor-actions">
+                    <button id="btn-save">Save</button>
+                    <button id="btn-rename" class="outline">Rename</button>
+                    <div id="move-to-folder">
+                        <select id="folder-select">
+                            <option value="">Move to...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Folder view (shown when a folder is selected) -->
+            <div id="folder-view" class="hidden">
+                <h3 id="folder-name"></h3>
+                <p id="folder-tunnel-count"></p>
+                <button id="btn-import-to-folder" class="outline">Import to This Folder</button>
+            </div>
+
+            <!-- Empty view (shown when nothing is selected) -->
+            <div id="empty-view">
+                <p>Select a tunnel or folder from the sidebar</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Error dialog -->
+    <dialog id="error-dialog">
+        <article>
+            <header>
+                <button aria-label="Close" rel="prev" id="error-dialog-close"></button>
+                <h3>Error</h3>
+            </header>
+            <pre id="error-dialog-message"></pre>
+        </article>
+    </dialog>
+
+    <!-- Prompt dialog (for New Tunnel / New Folder) -->
+    <dialog id="prompt-dialog">
+        <article>
+            <header>
+                <h3 id="prompt-dialog-title">Enter name</h3>
+            </header>
+            <input type="text" id="prompt-dialog-input" placeholder="Name">
+            <footer>
+                <button class="secondary" id="prompt-dialog-cancel">Cancel</button>
+                <button id="prompt-dialog-ok">OK</button>
+            </footer>
+        </article>
+    </dialog>
+
+    <!-- Confirm dialog -->
+    <dialog id="confirm-dialog">
+        <article>
+            <header>
+                <h3 id="confirm-dialog-title">Confirm</h3>
+            </header>
+            <p id="confirm-dialog-message"></p>
+            <footer>
+                <button class="secondary" id="confirm-dialog-cancel">Cancel</button>
+                <button class="contrast" id="confirm-dialog-ok">Delete</button>
+            </footer>
+        </article>
+    </dialog>
+
+    <script src="/app.js"></script>
+</body>
+</html>

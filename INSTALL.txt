@@ -1,0 +1,25 @@
+How to install TunnelVision on your Linux desktop
+==================================================
+
+Step 1: Build the binary
+  cd ~/git/mine/kabelvakten
+  go build -o tunnelvision .
+
+Step 2: Copy the binary to your local bin
+  cp tunnelvision ~/.local/bin/
+
+Step 3: Install the icon
+  mkdir -p ~/.local/share/icons
+  cp assets/appicon.svg ~/.local/share/icons/tunnelvision.svg
+
+Step 4: Install the desktop entry (start menu shortcut)
+  cp tunnelvision.desktop ~/.local/share/applications/
+
+Step 5: Make sure ~/.local/bin is in your PATH
+  echo $PATH | grep -q "$HOME/.local/bin" && echo "OK" || echo "Add to PATH"
+
+  If it says "Add to PATH", run:
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    source ~/.bashrc
+
+Done! Search "TunnelVision" in your KDE app launcher.

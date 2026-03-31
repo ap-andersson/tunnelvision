@@ -2,18 +2,25 @@ package main
 
 import (
 	"context"
+	"embed"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
-	"fyne.io/fyne/v2/app"
-
 	"github.com/ap-andersson/tunnelvision/internal/config"
+	"github.com/ap-andersson/tunnelvision/internal/tray"
 	"github.com/ap-andersson/tunnelvision/internal/tunnel"
-	"github.com/ap-andersson/tunnelvision/internal/ui"
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+//go:embed all:frontend
+var assets embed.FS
+
+//go:embed appicon.png
+var appIcon []byte
 
 func main() {
 	// Initialize config store
@@ -27,41 +34,73 @@ func main() {
 	manager := tunnel.NewManager()
 	status := tunnel.NewStatus()
 
-	// Create Fyne app
-	fyneApp := app.NewWithID("com.github.ap-andersson.tunnelvision")
-	fyneApp.SetIcon(ui.ResourceAppIcon)
+	// Create service layer for Wails bindings
+	tunnelService := NewTunnelService(store, manager, status)
+	configService := NewConfigService(store)
 
-	// Build UI
-	application := ui.NewApp(fyneApp, store, manager, status)
+	// System tray (set up in OnStartup when we have the Wails context)
+	var appTray *tray.Tray
 
-	// Start periodic status refresh
-	go func() {
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			if err := status.Refresh(); err != nil {
-				log.Printf("Status refresh error: %v", err)
+	// Create and run Wails application
+	err = wails.Run(&options.App{
+		Title:             "TunnelVision",
+		Width:             960,
+		Height:            650,
+		HideWindowOnClose: true,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		Linux: &linux.Options{
+			Icon:        appIcon,
+			ProgramName: "tunnelvision",
+		},
+		OnStartup: func(ctx context.Context) {
+			tunnelService.SetContext(ctx)
+			configService.SetContext(ctx)
+
+			// Set up system tray
+			appTray = tray.New(store, manager, status,
+				func() { wailsRuntime.WindowShow(ctx) },
+				func() { wailsRuntime.Quit(ctx) },
+			)
+			appTray.Setup()
+
+			// Single callback for state changes: update both tray and frontend
+			manager.SetOnStateChange(func() {
+				appTray.Update()
+				tunnelService.EmitStateChanged()
+			})
+
+			// Update tray when config changes (import, delete, rename, etc.)
+			configService.SetOnConfigChange(func() {
+				appTray.Update()
+			})
+
+			// Start periodic status refresh
+			go func() {
+				ticker := time.NewTicker(5 * time.Second)
+				defer ticker.Stop()
+				for range ticker.C {
+					if err := status.Refresh(); err != nil {
+						log.Printf("Status refresh error: %v", err)
+					}
+				}
+			}()
+		},
+		OnShutdown: func(ctx context.Context) {
+			if appTray != nil {
+				appTray.Stop()
 			}
-		}
-	}()
-
-	// Handle graceful shutdown (SIGINT, SIGTERM)
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigCh
-		gracefulShutdown(manager)
-		os.Exit(0)
-	}()
-
-	// Hook into Fyne's lifecycle for clean shutdown
-	fyneApp.Lifecycle().SetOnStopped(func() {
-		gracefulShutdown(manager)
+			gracefulShutdown(manager)
+		},
+		Bind: []interface{}{
+			tunnelService,
+			configService,
+		},
 	})
-
-	// Show and run
-	application.Show()
-	fyneApp.Run()
+	if err != nil {
+		log.Fatalf("Wails error: %v", err)
+	}
 }
 
 func gracefulShutdown(manager *tunnel.Manager) {
