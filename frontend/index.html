@@ -18,7 +18,6 @@
         </ul>
         <ul>
             <li><button id="btn-delete" class="outline contrast" disabled>Delete</button></li>
-            <li><button id="btn-connect" disabled>Connect</button></li>
             <li><button id="btn-disconnect" class="outline" disabled>Disconnect</button></li>
         </ul>
     </nav>
@@ -28,6 +27,9 @@
         <!-- Left: Tunnel tree -->
         <aside id="sidebar">
             <div id="tunnel-tree"></div>
+            <div id="sidebar-footer">
+                <button id="btn-logs" class="outline contrast sidebar-logs-btn">&#x1F4CB; Logs</button>
+            </div>
         </aside>
 
         <!-- Right: Editor panel -->
@@ -41,6 +43,7 @@
                 </div>
                 <textarea id="config-editor" spellcheck="false"></textarea>
                 <div id="editor-actions">
+                    <button id="btn-connect-tunnel">Connect</button>
                     <button id="btn-save">Save</button>
                     <button id="btn-rename" class="outline">Rename</button>
                     <div id="move-to-folder">
@@ -55,12 +58,30 @@
             <div id="folder-view" class="hidden">
                 <h3 id="folder-name"></h3>
                 <p id="folder-tunnel-count"></p>
-                <button id="btn-import-to-folder" class="outline">Import to This Folder</button>
+                <div id="folder-actions">
+                    <button id="btn-connect-folder">Connect Random</button>
+                    <button id="btn-import-to-folder" class="outline">Import to This Folder</button>
+                </div>
             </div>
 
             <!-- Empty view (shown when nothing is selected) -->
             <div id="empty-view">
                 <p>Select a tunnel or folder from the sidebar</p>
+            </div>
+
+            <!-- Log view (shown when logs are selected) -->
+            <div id="log-view" class="hidden">
+                <div id="log-header">
+                    <h4>System Logs</h4>
+                    <div id="log-header-actions">
+                        <input type="text" id="log-filter" placeholder="Filter logs...">
+                        <button id="btn-clear-logs" class="outline contrast" style="padding:0.2rem 0.5rem;font-size:0.78rem;margin:0">Clear</button>
+                    </div>
+                </div>
+                <div id="log-container">
+                    <pre id="log-output"></pre>
+                    <button id="btn-follow" class="hidden">&#x2193; Follow</button>
+                </div>
             </div>
         </main>
     </div>

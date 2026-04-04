@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ap-andersson/tunnelvision/internal/config"
+	logstreamer "github.com/ap-andersson/tunnelvision/internal/log"
 	"github.com/ap-andersson/tunnelvision/internal/tray"
 	"github.com/ap-andersson/tunnelvision/internal/tunnel"
 	"github.com/wailsapp/wails/v2"
@@ -34,9 +35,16 @@ func main() {
 	manager := tunnel.NewManager()
 	status := tunnel.NewStatus()
 
+	// Initialize log streamer
+	streamer := logstreamer.NewStreamer()
+	if err := streamer.Start(); err != nil {
+		log.Printf("Warning: failed to start log streamer: %v", err)
+	}
+
 	// Create service layer for Wails bindings
 	tunnelService := NewTunnelService(store, manager, status)
 	configService := NewConfigService(store)
+	logService := NewLogService(streamer)
 
 	// System tray (set up in OnStartup when we have the Wails context)
 	var appTray *tray.Tray
@@ -57,6 +65,7 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			tunnelService.SetContext(ctx)
 			configService.SetContext(ctx)
+			logService.SetContext(ctx)
 
 			// Set up system tray
 			appTray = tray.New(store, manager, status,
@@ -88,6 +97,7 @@ func main() {
 			}()
 		},
 		OnShutdown: func(ctx context.Context) {
+			streamer.Stop()
 			if appTray != nil {
 				appTray.Stop()
 			}
@@ -96,6 +106,7 @@ func main() {
 		Bind: []interface{}{
 			tunnelService,
 			configService,
+			logService,
 		},
 	})
 	if err != nil {

@@ -1,16 +1,25 @@
 // TunnelVision frontend — Wails + Vanilla JS
 
 // ── State ──────────────────────────────────────────────
-let selectedType = null;   // 'tunnel' | 'folder' | null
+let selectedType = null;   // 'tunnel' | 'folder' | 'logs' | null
 let selectedId = null;     // filename (tunnel) or folder name
 let currentStatus = { connected: false, activeTunnel: '', activeInterfaces: [] };
 let expandedFolders = new Set(); // track which folders are open
+let logAutoFollow = true;  // auto-scroll log view to bottom
+let logAllLines = [];      // all log lines (unfiltered)
+let logFilterText = '';    // current filter string
 
 // ── DOM refs ───────────────────────────────────────────
 const $tree = document.getElementById('tunnel-tree');
 const $tunnelView = document.getElementById('tunnel-view');
 const $folderView = document.getElementById('folder-view');
 const $emptyView = document.getElementById('empty-view');
+const $logView = document.getElementById('log-view');
+const $logOutput = document.getElementById('log-output');
+const $logContainer = document.getElementById('log-container');
+const $btnFollow = document.getElementById('btn-follow');
+const $btnLogs = document.getElementById('btn-logs');
+const $logFilter = document.getElementById('log-filter');
 const $editor = document.getElementById('config-editor');
 const $infoAddress = document.getElementById('info-address');
 const $infoEndpoint = document.getElementById('info-endpoint');
@@ -18,7 +27,6 @@ const $infoDNS = document.getElementById('info-dns');
 const $folderName = document.getElementById('folder-name');
 const $folderCount = document.getElementById('folder-tunnel-count');
 const $folderSelect = document.getElementById('folder-select');
-const $btnConnect = document.getElementById('btn-connect');
 const $btnDisconnect = document.getElementById('btn-disconnect');
 const $btnDelete = document.getElementById('btn-delete');
 
@@ -28,6 +36,7 @@ const $btnDelete = document.getElementById('btn-delete');
 
 function tunnelSvc() { return window.go.main.TunnelService; }
 function configSvc() { return window.go.main.ConfigService; }
+function logSvc() { return window.go.main.LogService; }
 
 // ── Initialization ─────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -35,12 +44,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindToolbar();
     bindEditorActions();
     bindDialogs();
+    bindLogs();
 
     // Listen for backend events
     window.runtime.EventsOn('tunnel:state-changed', async () => {
         await refreshStatus();
         await refreshTree();
         updateToolbarState();
+    });
+
+    window.runtime.EventsOn('log:line', (line) => {
+        appendLogLine(line);
     });
 });
 
@@ -85,51 +99,69 @@ function renderTree(meta) {
 
     // Folders
     const folderNames = Object.keys(meta.folders).sort();
+    if (folderNames.length > 0) {
+        const groupsLabel = document.createElement('div');
+        groupsLabel.className = 'tree-section-label';
+        groupsLabel.textContent = 'Groups';
+        $tree.appendChild(groupsLabel);
+    }
     for (const folder of folderNames) {
         const tunnels = meta.folders[folder] || [];
-        const details = document.createElement('details');
-        details.className = 'tree-folder';
+        const wrapper = document.createElement('div');
+        wrapper.className = 'tree-folder';
 
-        // Preserve expand state (default closed for new folders)
-        if (expandedFolders.has(folder)) {
-            details.open = true;
+        const isOpen = expandedFolders.has(folder);
+        if (isOpen) {
+            wrapper.classList.add('open');
         }
 
         // Mark folder as active if it contains the connected tunnel
         if (activeFolderName === folder) {
-            details.classList.add('active-folder');
+            wrapper.classList.add('active-folder');
         }
 
-        // Track expand/collapse
-        details.addEventListener('toggle', () => {
-            if (details.open) {
-                expandedFolders.add(folder);
-            } else {
+        const header = document.createElement('div');
+        header.className = 'tree-folder-header';
+        header.dataset.type = 'folder';
+        header.dataset.id = folder;
+        if (selectedType === 'folder' && selectedId === folder) {
+            header.classList.add('selected');
+        }
+
+        // Folder label
+        const label = document.createElement('span');
+        label.className = 'folder-label';
+        label.textContent = `${folder} (${tunnels.length})`;
+
+        // Expand toggle
+        const toggle = document.createElement('span');
+        toggle.className = 'folder-toggle';
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (wrapper.classList.contains('open')) {
+                wrapper.classList.remove('open');
                 expandedFolders.delete(folder);
+            } else {
+                wrapper.classList.add('open');
+                expandedFolders.add(folder);
             }
         });
 
-        const summary = document.createElement('summary');
-        summary.textContent = `${folder} (${tunnels.length})`;
-        summary.dataset.type = 'folder';
-        summary.dataset.id = folder;
-        if (selectedType === 'folder' && selectedId === folder) {
-            summary.classList.add('selected');
-        }
-        summary.addEventListener('click', (e) => {
-            e.preventDefault();
+        header.appendChild(label);
+        header.appendChild(toggle);
+        // Clicking the header selects the folder
+        header.addEventListener('click', () => {
             selectItem('folder', folder);
-            details.open = !details.open;
         });
-        details.appendChild(summary);
+        wrapper.appendChild(header);
 
         const tunnelContainer = document.createElement('div');
         tunnelContainer.className = 'folder-tunnels';
         for (const filename of tunnels) {
             tunnelContainer.appendChild(createTunnelItem(filename));
         }
-        details.appendChild(tunnelContainer);
-        $tree.appendChild(details);
+        wrapper.appendChild(tunnelContainer);
+        $tree.appendChild(wrapper);
     }
 
     // Ungrouped tunnels
@@ -186,11 +218,17 @@ async function selectItem(type_, id) {
     selectedId = id;
 
     // Update tree highlighting
-    document.querySelectorAll('.tree-item.selected, .tree-folder summary.selected').forEach(el => {
+    document.querySelectorAll('.tree-item.selected, .tree-folder-header.selected').forEach(el => {
         el.classList.remove('selected');
     });
-    const sel = document.querySelector(`[data-type="${type_}"][data-id="${CSS.escape(id)}"]`);
-    if (sel) sel.classList.add('selected');
+    $btnLogs.classList.remove('selected');
+
+    if (type_ === 'logs') {
+        $btnLogs.classList.add('selected');
+    } else {
+        const sel = document.querySelector(`[data-type="${type_}"][data-id="${CSS.escape(id)}"]`);
+        if (sel) sel.classList.add('selected');
+    }
 
     updateToolbarState();
 
@@ -198,6 +236,8 @@ async function selectItem(type_, id) {
         await showTunnelView(id);
     } else if (type_ === 'folder') {
         showFolderView(id);
+    } else if (type_ === 'logs') {
+        await showLogView();
     }
 }
 
@@ -205,6 +245,7 @@ async function showTunnelView(filename) {
     $tunnelView.classList.remove('hidden');
     $folderView.classList.add('hidden');
     $emptyView.classList.add('hidden');
+    $logView.classList.add('hidden');
 
     try {
         const cfg = await configSvc().ReadConfig(filename);
@@ -221,6 +262,7 @@ async function showFolderView(folder) {
     $tunnelView.classList.add('hidden');
     $folderView.classList.remove('hidden');
     $emptyView.classList.add('hidden');
+    $logView.classList.add('hidden');
 
     $folderName.textContent = folder;
     try {
@@ -236,6 +278,8 @@ function showEmptyView() {
     $tunnelView.classList.add('hidden');
     $folderView.classList.add('hidden');
     $emptyView.classList.remove('hidden');
+    $logView.classList.add('hidden');
+    $btnLogs.classList.remove('selected');
     selectedType = null;
     selectedId = null;
     updateToolbarState();
@@ -248,8 +292,92 @@ function updateToolbarState() {
     const hasSelection = hasTunnelSelected || hasFolderSelected;
 
     $btnDelete.disabled = !hasSelection;
-    $btnConnect.disabled = !hasSelection;
     $btnDisconnect.disabled = !currentStatus.connected;
+}
+
+// ── Log view ───────────────────────────────────────────
+function bindLogs() {
+    $btnLogs.addEventListener('click', () => {
+        selectItem('logs', null);
+    });
+
+    $logContainer.addEventListener('scroll', () => {
+        const el = $logContainer;
+        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+        if (atBottom && !logAutoFollow) {
+            logAutoFollow = true;
+            $btnFollow.classList.add('hidden');
+        } else if (!atBottom && logAutoFollow) {
+            logAutoFollow = false;
+            $btnFollow.classList.remove('hidden');
+        }
+    });
+
+    $btnFollow.addEventListener('click', () => {
+        logAutoFollow = true;
+        $btnFollow.classList.add('hidden');
+        $logContainer.scrollTop = $logContainer.scrollHeight;
+    });
+
+    document.getElementById('btn-clear-logs').addEventListener('click', () => {
+        logAllLines = [];
+        $logOutput.textContent = '';
+    });
+
+    $logFilter.addEventListener('input', () => {
+        logFilterText = $logFilter.value.toLowerCase();
+        renderFilteredLogs();
+    });
+}
+
+async function showLogView() {
+    $tunnelView.classList.add('hidden');
+    $folderView.classList.add('hidden');
+    $emptyView.classList.add('hidden');
+    $logView.classList.remove('hidden');
+
+    try {
+        const lines = await logSvc().GetLogs();
+        logAllLines = lines;
+    } catch (e) {
+        logAllLines = ['Failed to load logs: ' + e];
+    }
+
+    renderFilteredLogs();
+
+    // Scroll to bottom and enable auto-follow
+    logAutoFollow = true;
+    $btnFollow.classList.add('hidden');
+    $logContainer.scrollTop = $logContainer.scrollHeight;
+}
+
+function appendLogLine(line) {
+    logAllLines.push(line);
+
+    // Trim stored lines to prevent unbounded memory growth
+    if (logAllLines.length > 1000) {
+        logAllLines = logAllLines.slice(-800);
+    }
+
+    // If line matches current filter (or no filter), append to visible output
+    if (!logFilterText || line.toLowerCase().includes(logFilterText)) {
+        if ($logOutput.textContent.length > 0) {
+            $logOutput.textContent += '\n' + line;
+        } else {
+            $logOutput.textContent = line;
+        }
+
+        if (logAutoFollow) {
+            $logContainer.scrollTop = $logContainer.scrollHeight;
+        }
+    }
+}
+
+function renderFilteredLogs() {
+    const filtered = logFilterText
+        ? logAllLines.filter(l => l.toLowerCase().includes(logFilterText))
+        : logAllLines;
+    $logOutput.textContent = filtered.join('\n');
 }
 
 // ── Toolbar actions ────────────────────────────────────
@@ -322,19 +450,6 @@ function bindToolbar() {
         }
     });
 
-    $btnConnect.addEventListener('click', async () => {
-        if (!selectedType || !selectedId) return;
-        try {
-            if (selectedType === 'folder') {
-                await tunnelSvc().ConnectRandom(selectedId);
-            } else {
-                await tunnelSvc().Connect(selectedId);
-            }
-        } catch (e) {
-            showError('Connect failed: ' + e);
-        }
-    });
-
     $btnDisconnect.addEventListener('click', async () => {
         try {
             await tunnelSvc().Disconnect();
@@ -360,6 +475,24 @@ function bindToolbar() {
 
 // ── Editor actions ─────────────────────────────────────
 function bindEditorActions() {
+    document.getElementById('btn-connect-tunnel').addEventListener('click', async () => {
+        if (selectedType !== 'tunnel' || !selectedId) return;
+        try {
+            await tunnelSvc().Connect(selectedId);
+        } catch (e) {
+            showError('Connect failed: ' + e);
+        }
+    });
+
+    document.getElementById('btn-connect-folder').addEventListener('click', async () => {
+        if (selectedType !== 'folder' || !selectedId) return;
+        try {
+            await tunnelSvc().ConnectRandom(selectedId);
+        } catch (e) {
+            showError('Connect failed: ' + e);
+        }
+    });
+
     document.getElementById('btn-save').addEventListener('click', async () => {
         if (selectedType !== 'tunnel' || !selectedId) return;
         try {

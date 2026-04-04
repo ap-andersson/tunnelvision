@@ -50,6 +50,33 @@ body {
     border-right: 1px solid var(--pico-muted-border-color);
     overflow-y: auto;
     padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+#tunnel-tree {
+    flex: 1;
+    overflow-y: auto;
+}
+
+#sidebar-footer {
+    flex-shrink: 0;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--pico-muted-border-color);
+    margin-top: 0.5rem;
+}
+
+.sidebar-logs-btn {
+    width: 100%;
+    padding: 0.35rem 0.5rem !important;
+    font-size: 0.85rem !important;
+    margin: 0 !important;
+}
+
+.sidebar-logs-btn.selected {
+    background: var(--pico-primary-background);
+    color: var(--pico-primary-inverse);
+    border-color: var(--pico-primary-background);
 }
 
 /* Tunnel tree */
@@ -58,40 +85,109 @@ body {
 }
 
 .tree-folder {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0;
 }
 
-.tree-folder summary {
+.tree-folder-header {
     cursor: pointer;
     padding: 0.3rem 0.5rem;
     border-radius: 4px;
     user-select: none;
-    font-weight: 600;
-    font-size: 0.88rem;
-    list-style: none;
+    font-size: 0.9rem;
     color: var(--pico-color);
+    display: flex;
+    align-items: center;
 }
 
-.tree-folder summary::before {
-    content: "▸ ";
-    display: inline;
+.folder-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.tree-folder[open] > summary::before {
-    content: "▾ ";
+.folder-toggle {
+    cursor: pointer;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-left: auto;
+    margin-right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
 }
 
-.tree-folder summary:hover {
+.folder-toggle::after {
+    content: "";
+    display: block;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 6px solid #999;
+}
+
+.tree-folder.open .folder-toggle::after {
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #999;
+    border-bottom: none;
+}
+
+.folder-toggle:hover::after {
+    border-left-color: #ccc;
+}
+
+.tree-folder.open .folder-toggle:hover::after {
+    border-left-color: transparent;
+    border-top-color: #ccc;
+}
+
+.tree-folder-header:hover {
     background: var(--pico-secondary-hover-background);
 }
 
-.tree-folder summary.selected {
+.tree-folder-header.selected {
     background: var(--pico-primary-background);
     color: var(--pico-primary-inverse);
 }
 
+.tree-folder-header.selected .folder-toggle::after {
+    border-left-color: var(--pico-primary-inverse);
+}
+
+.tree-folder.open .tree-folder-header.selected .folder-toggle::after {
+    border-left-color: transparent;
+    border-top-color: var(--pico-primary-inverse);
+}
+
+.tree-folder.active-folder > .tree-folder-header {
+    color: var(--tv-color-connected);
+    font-weight: 600;
+}
+
+.tree-folder.active-folder > .tree-folder-header .folder-label::before {
+    content: "● ";
+}
+
+.tree-folder.active-folder .folder-toggle::after {
+    border-left-color: var(--tv-color-connected);
+}
+
+.tree-folder.open.active-folder .folder-toggle::after {
+    border-left-color: transparent;
+    border-top-color: var(--tv-color-connected);
+}
+
 .tree-folder .folder-tunnels {
+    display: none;
     padding-left: 1rem;
+}
+
+.tree-folder.open .folder-tunnels {
+    display: block;
 }
 
 .tree-item {
@@ -120,19 +216,6 @@ body {
 
 .tree-item.active-tunnel::before {
     content: "● ";
-}
-
-.tree-folder.active-folder > summary {
-    color: var(--tv-color-connected);
-    font-weight: 700;
-}
-
-.tree-folder.active-folder > summary::before {
-    content: "▸ ● ";
-}
-
-.tree-folder.active-folder[open] > summary::before {
-    content: "▾ ● ";
 }
 
 /* Disconnect button — red */
@@ -227,6 +310,16 @@ body {
     margin-bottom: 0;
 }
 
+#folder-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+#folder-actions button {
+    margin: 0;
+}
+
 /* Empty view */
 #empty-view {
     display: flex;
@@ -281,4 +374,82 @@ details[open]>summary:not([role]):not(:focus) {
 
 details summary:focus:not([role]) {
     color:var(--pico-primary-inverse);
+}
+
+/* Log view */
+#log-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+#log-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    margin-bottom: 0.5rem;
+}
+
+#log-header h4 {
+    margin: 0;
+}
+
+#log-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+#log-filter {
+    margin: 0;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    width: 200px;
+    height: auto;
+}
+
+#log-container {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    background: #0d1117;
+    border: 1px solid var(--pico-muted-border-color);
+    border-radius: 4px;
+    min-height: 0;
+}
+
+#log-output {
+    margin: 0;
+    padding: 0.6rem;
+    font-family: "Fira Code", "Cascadia Code", "JetBrains Mono", monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: #c9d1d9;
+    font-size: 10pt;
+    white-space: pre;
+    word-break: normal;
+    background: transparent;
+}
+
+#btn-follow {
+    position: sticky;
+    bottom: 0.5rem;
+    float: right;
+    margin-right: 0.5rem;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.78rem;
+    opacity: 0.9;
+    z-index: 1;
+}
+
+/* Log view scrollbar */
+#log-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+#log-container::-webkit-scrollbar-thumb {
+    background: var(--pico-muted-border-color);
+    border-radius: 3px;
 }
