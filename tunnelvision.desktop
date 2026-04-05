@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=TunnelVision
+Comment=WireGuard VPN Client
+Exec=tunnelvision
+Icon=tunnelvision
+Type=Application
+Categories=Network;VPN;
+Keywords=vpn;wireguard;tunnel;
+StartupWMClass=tunnelvision

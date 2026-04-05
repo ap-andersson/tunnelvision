@@ -1,6 +1,6 @@
 # TunnelVision
 
-**TunnelVision** is a graphical WireGuard VPN client for Linux, built with Go and [Fyne](https://fyne.io/). It aims to provide the same ease-of-use as the official WireGuard Windows client — something Linux desktop users have been missing.
+**TunnelVision** is a graphical WireGuard VPN client for Linux, built with Go and [Wails v2](https://wails.io/). It aims to provide the same ease-of-use as the official WireGuard Windows client — something Linux desktop users have been missing.
 
 This project was created with the assistance of **GitHub Copilot** (Claude Opus 4.6).
 
@@ -22,45 +22,71 @@ This project was created with the assistance of **GitHub Copilot** (Claude Opus 
 ## Requirements
 
 - **Linux** (tested on Fedora 43 KDE, should work on any distro with NetworkManager and WireGuard support)
+- **Go 1.21+** — required to compile the application
+- **Wails CLI** — the app uses [Wails v2](https://wails.io/) and must be built with the Wails CLI (not plain `go build`)
 - **NetworkManager** — must be running (ships by default on Fedora, Ubuntu, and most desktop distros)
 - **WireGuard tools** — `wireguard-tools` package must be installed
 
 ## Building
 
-### Fedora
+### Fedora (43+)
 
 ```bash
 # Install build dependencies
-sudo dnf install -y gcc pkg-config \
-    libX11-devel libXcursor-devel libXrandr-devel libXinerama-devel \
-    mesa-libGL-devel libXi-devel libXxf86vm-devel
+sudo dnf install -y gcc-c++ pkgconf-pkg-config gtk3-devel \
+    webkit2gtk4.1-devel wireguard-tools
 
-# Install WireGuard tools (if not already installed)
-sudo dnf install -y wireguard-tools
+# Install Node.js/npm (needed by the Wails CLI)
+sudo dnf install -y nodejs-npm
 
-# Build
-go build -o tunnelvision .
+# Install the Wails CLI
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+# Make sure ~/go/bin is in your PATH
+export PATH="$HOME/go/bin:$PATH"
+
+# Verify everything is in order
+wails doctor
+
+# Build (the webkit2_41 tag is required on Fedora 43+ which ships webkit2gtk 4.1)
+wails build -tags webkit2_41
 ```
+
+The binary will be at `build/bin/tunnelvision`.
 
 ### Ubuntu / Debian
 
 ```bash
 # Install build dependencies
-sudo apt install -y gcc pkg-config \
-    libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev \
-    libgl1-mesa-dev libxi-dev libxxf86vm-dev
+sudo apt install -y build-essential pkg-config libgtk-3-dev \
+    libwebkit2gtk-4.0-dev wireguard-tools
 
-# Install WireGuard tools
-sudo apt install -y wireguard-tools
+# Install Node.js/npm (needed by the Wails CLI)
+sudo apt install -y npm
+
+# Install the Wails CLI
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+# Make sure ~/go/bin is in your PATH
+export PATH="$HOME/go/bin:$PATH"
 
 # Build
-go build -o tunnelvision .
+wails build
 ```
+
+The binary will be at `build/bin/tunnelvision`.
 
 ### Run
 
 ```bash
-./tunnelvision
+./build/bin/tunnelvision
+```
+
+### Development mode
+
+```bash
+wails dev -tags webkit2_41   # Fedora 43+
+wails dev                    # Ubuntu/Debian
 ```
 
 The app stores its configuration in `~/.config/tunnelvision/`.
@@ -103,7 +129,8 @@ tunnelvision/
 ## Tech Stack
 
 - **Go** — Application language
-- **[Fyne v2](https://fyne.io/)** — Cross-platform GUI toolkit (pure Go, minimal CGo)
+- **[Wails v2](https://wails.io/)** — Desktop application framework (Go backend + web frontend via WebKit)
+- **[fyne.io/systray](https://github.com/niceguyit/systray)** — System tray integration
 - **[NetworkManager](https://networkmanager.dev/)** — WireGuard tunnel lifecycle via `nmcli` (no root/pkexec needed)
 
 ## Cross-Distribution Support

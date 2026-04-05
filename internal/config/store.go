@@ -393,6 +393,56 @@ func (s *Store) AddConfig(filename string, content string) error {
 	return s.SaveMetadata(meta)
 }
 
+// RenameTunnel renames a tunnel's config file and updates metadata.
+func (s *Store) RenameTunnel(oldFilename string, newName string) (string, error) {
+	newFilename := newName
+	if !strings.HasSuffix(newFilename, ".conf") {
+		newFilename += ".conf"
+	}
+	if newFilename == oldFilename {
+		return oldFilename, nil
+	}
+
+	// Check target doesn't already exist
+	destPath := filepath.Join(s.tunnelsDir, newFilename)
+	if _, err := os.Stat(destPath); err == nil {
+		return "", fmt.Errorf("tunnel %q already exists", newFilename)
+	}
+
+	srcPath := filepath.Join(s.tunnelsDir, oldFilename)
+	if err := os.Rename(srcPath, destPath); err != nil {
+		return "", fmt.Errorf("rename file: %w", err)
+	}
+
+	meta, err := s.LoadMetadata()
+	if err != nil {
+		return "", err
+	}
+
+	// Update in ungrouped
+	for i, f := range meta.Ungrouped {
+		if f == oldFilename {
+			meta.Ungrouped[i] = newFilename
+			break
+		}
+	}
+
+	// Update in folders
+	for folder, tunnels := range meta.Folders {
+		for i, f := range tunnels {
+			if f == oldFilename {
+				meta.Folders[folder][i] = newFilename
+				break
+			}
+		}
+	}
+
+	if err := s.SaveMetadata(meta); err != nil {
+		return "", err
+	}
+	return newFilename, nil
+}
+
 func removeFromSlice(slice []string, item string) []string {
 	result := make([]string, 0, len(slice))
 	for _, s := range slice {

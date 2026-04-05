@@ -1,0 +1,17 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "tunnelvision",
+  "outputfilename": "tunnelvision",
+  "frontend:dir": "frontend",
+  "frontend:build": "",
+  "frontend:install": "",
+  "author": {
+    "name": "ap-andersson"
+  },
+  "info": {
+    "companyName": "ap-andersson",
+    "productName": "TunnelVision",
+    "productVersion": "1.0.0",
+    "comments": "WireGuard VPN Tunnel Manager"
+  }
+}
